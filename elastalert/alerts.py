@@ -19,7 +19,6 @@ from socket import error
 
 import boto3
 import requests
-import stomp
 from exotel import Exotel
 from jira.client import JIRA
 from jira.exceptions import JIRAError
@@ -305,74 +304,6 @@ class Alerter(object):
             raise EAException('Account file must have user and password fields')
         self.user = account_conf['user']
         self.password = account_conf['password']
-
-
-class StompAlerter(Alerter):
-    """ The stomp alerter publishes alerts via stomp to a broker. """
-    required_options = frozenset(
-        ['stomp_hostname', 'stomp_hostport', 'stomp_login', 'stomp_password'])
-
-    def alert(self, matches):
-        alerts = []
-
-        qk = self.rule.get('query_key', None)
-
-        fullmessage = {}
-        for match in matches:
-            if qk is not None:
-                resmatch = lookup_es_key(match, qk)
-            else:
-                resmatch = None
-
-            if resmatch is not None:
-                elastalert_logger.info(
-                    'Alert for %s, %s at %s:' % (self.rule['name'], resmatch, lookup_es_key(match, self.rule['timestamp_field'])))
-                alerts.append(
-                    'Alert for %s, %s at %s:' % (self.rule['name'], resmatch, lookup_es_key(
-                        match, self.rule['timestamp_field']))
-                )
-                fullmessage['match'] = resmatch
-            else:
-                elastalert_logger.info('Rule %s generated an alert at %s:' % (
-                    self.rule['name'], lookup_es_key(match, self.rule['timestamp_field'])))
-                alerts.append(
-                    'Rule %s generated an alert at %s:' % (self.rule['name'], lookup_es_key(
-                        match, self.rule['timestamp_field']))
-                )
-                fullmessage['match'] = lookup_es_key(
-                    match, self.rule['timestamp_field'])
-            elastalert_logger.info(unicode(BasicMatchString(self.rule, match)))
-
-        fullmessage['alerts'] = alerts
-        fullmessage['rule'] = self.rule['name']
-        fullmessage['rule_file'] = self.rule['rule_file']
-
-        fullmessage['matching'] = unicode(BasicMatchString(self.rule, match))
-        fullmessage['alertDate'] = datetime.datetime.now(
-        ).strftime("%Y-%m-%d %H:%M:%S")
-        fullmessage['body'] = self.create_alert_body(matches)
-
-        fullmessage['matches'] = matches
-
-        self.stomp_hostname = self.rule.get('stomp_hostname', 'localhost')
-        self.stomp_hostport = self.rule.get('stomp_hostport', '61613')
-        self.stomp_login = self.rule.get('stomp_login', 'admin')
-        self.stomp_password = self.rule.get('stomp_password', 'admin')
-        self.stomp_destination = self.rule.get(
-            'stomp_destination', '/queue/ALERT')
-
-        conn = stomp.Connection([(self.stomp_hostname, self.stomp_hostport)])
-
-        conn.start()
-        conn.connect(self.stomp_login, self.stomp_password)
-        # Ensures that the CONNECTED frame is received otherwise, the disconnect call will fail.
-        time.sleep(1)
-        conn.send(self.stomp_destination, json.dumps(fullmessage))
-        conn.disconnect()
-
-    def get_info(self):
-        return {'type': 'stomp'}
-
 
 class DebugAlerter(Alerter):
     """ The debug alerter uses a Python logger (by default, alerting to terminal). """
