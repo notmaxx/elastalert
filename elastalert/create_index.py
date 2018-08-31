@@ -20,7 +20,7 @@ from envparse import Env
 env = Env(ES_USE_SSL=bool)
 
 
-def main():
+def main(ext_es = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default=os.environ.get('ES_HOST', None), help='Elasticsearch host')
     parser.add_argument('--port', default=os.environ.get('ES_PORT', None), type=int, help='Elasticsearch port')
@@ -106,25 +106,28 @@ def main():
                      else raw_input('Name of existing index to copy? (Default None) '))
 
     timeout = args.timeout
-    auth = Auth()
-    http_auth = auth(host=host,
-                     username=username,
-                     password=password,
-                     aws_region=aws_region,
-                     profile_name=args.profile)
-    es = Elasticsearch(
-        host=host,
-        port=port,
-        timeout=timeout,
-        use_ssl=use_ssl,
-        verify_certs=verify_certs,
-        connection_class=RequestsHttpConnection,
-        http_auth=http_auth,
-        url_prefix=url_prefix,
-        send_get_body_as=send_get_body_as,
-        client_cert=client_cert,
-        ca_certs=ca_certs,
-        client_key=client_key)
+    if not ext_es:
+        auth = Auth()
+        http_auth = auth(host=host,
+                         username=username,
+                         password=password,
+                         aws_region=aws_region,
+                         profile_name=args.profile)
+        es = Elasticsearch(
+            host=host,
+            port=port,
+            timeout=timeout,
+            use_ssl=use_ssl,
+            verify_certs=verify_certs,
+            connection_class=RequestsHttpConnection,
+            http_auth=http_auth,
+            url_prefix=url_prefix,
+            send_get_body_as=send_get_body_as,
+            client_cert=client_cert,
+            ca_certs=ca_certs,
+            client_key=client_key)
+    else:
+        es = ext_es
 
     esversion = es.info()["version"]["number"]
     print("Elastic Version:" + esversion.split(".")[0])
@@ -271,7 +274,6 @@ def main():
         elasticsearch.helpers.reindex(es, old_index, index)
 
     print('Done!')
-
 
 if __name__ == '__main__':
     main()
