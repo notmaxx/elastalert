@@ -18,7 +18,6 @@ from util import total_seconds
 from util import ts_now
 from util import ts_to_dt
 
-
 class RuleType(object):
     """ The base class for a rule type.
     The class must implement add_data and add any matches to self.matches.
@@ -564,9 +563,15 @@ class FlatlineRule(FrequencyRule):
         if not end:
             return
 
+        print('!!! check_for_match: key:{}'.format(key))
+
         most_recent_ts = self.get_ts(self.occurrences[key].data[-1])
         if self.first_event.get(key) is None:
             self.first_event[key] = most_recent_ts
+
+        print('!!! check_for_match: most_recent_ts:{}'.format(most_recent_ts))
+        print('!!! check_for_match: timeframe:{}'.format(self.rules['timeframe']))
+        print('!!! check_for_match: first_event_ts:{}'.format(self.first_event[key]))
 
         # Don't check for matches until timeframe has elapsed
         if most_recent_ts - self.first_event[key] < self.rules['timeframe']:
@@ -574,11 +579,13 @@ class FlatlineRule(FrequencyRule):
 
         # Match if, after removing old events, we hit num_events
         count = self.occurrences[key].count()
+        print('!!! check_for_match: count:{}'.format(count))
         if count < self.rules['threshold']:
             # Do a deep-copy, otherwise we lose the datetime type in the timestamp field of the last event
             event = copy.deepcopy(self.occurrences[key].data[-1][0])
             event.update(key=key, count=count)
             self.add_match(event)
+            print('!!! check_for_match: add_match:{}'.format(event))
 
             if not self.rules.get('forget_keys'):
                 # After adding this match, leave the occurrences windows alone since it will
