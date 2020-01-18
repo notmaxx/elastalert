@@ -218,7 +218,6 @@ class FrequencyRule(RuleType):
 
     def add_count_data(self, data):
         """ Add count data to the rule. Data should be of the form {ts: count}. """
-        print('!!! add_count_data: data:{}'.format(data))
         if len(data) > 1:
             raise EAException('add_count_data can only accept one count at a time')
 
@@ -229,7 +228,6 @@ class FrequencyRule(RuleType):
         self.check_for_match('all')
 
     def add_terms_data(self, terms):
-        print('!!! add_terms_data: terms:{}'.format(terms))
         for timestamp, buckets in terms.iteritems():
             for bucket in buckets:
                 event = ({self.ts_field: timestamp,
@@ -238,7 +236,6 @@ class FrequencyRule(RuleType):
                 self.check_for_match(bucket['key'])
 
     def add_data(self, data):
-        print('!!! add_data: data:{}'.format(data))
         if 'query_key' in self.rules:
             qk = self.rules['query_key']
         else:
@@ -566,16 +563,9 @@ class FlatlineRule(FrequencyRule):
         if not end:
             return
 
-        print('!!! check_for_match: key:{}'.format(key))
-        print('!!! check_for_match: occurrences:{}'.format(self.occurrences[key]))
-
         most_recent_ts = self.get_ts(self.occurrences[key].data[-1])
         if self.first_event.get(key) is None:
             self.first_event[key] = most_recent_ts
-
-        print('!!! check_for_match: most_recent_ts:{}'.format(most_recent_ts))
-        print('!!! check_for_match: timeframe:{}'.format(self.rules['timeframe']))
-        print('!!! check_for_match: first_event_ts:{}'.format(self.first_event[key]))
 
         # Don't check for matches until timeframe has elapsed
         if most_recent_ts - self.first_event[key] < self.rules['timeframe']:
@@ -583,13 +573,11 @@ class FlatlineRule(FrequencyRule):
 
         # Match if, after removing old events, we hit num_events
         count = self.occurrences[key].count()
-        print('!!! check_for_match: count:{}'.format(count))
         if count < self.rules['threshold']:
             # Do a deep-copy, otherwise we lose the datetime type in the timestamp field of the last event
             event = copy.deepcopy(self.occurrences[key].data[-1][0])
             event.update(key=key, count=count)
             self.add_match(event)
-            print('!!! check_for_match: add_match:{}'.format(event))
 
             if not self.rules.get('forget_keys'):
                 # After adding this match, leave the occurrences windows alone since it will
@@ -617,7 +605,6 @@ class FlatlineRule(FrequencyRule):
     def garbage_collect(self, ts):
         # We add an event with a count of zero to the EventWindow for each key. This will cause the EventWindow
         # to remove events that occurred more than one `timeframe` ago, and call onRemoved on them.
-        print('!!! garbage_collect: ts:{}'.format(ts))
         default = ['all'] if 'query_key' not in self.rules else []
         for key in self.occurrences.keys() or default:
             self.occurrences.setdefault(
